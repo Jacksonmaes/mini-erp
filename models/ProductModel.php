@@ -33,5 +33,30 @@ class ProductModel {
     public function delete($id) {
         $stmt = $this->db->prepare("DELETE FROM products WHERE id = ?");
         return $stmt->execute([$id]);
+
+        public function getVariations($productId) {
+        $stmt = $this->db->prepare("SELECT pv.*, s.quantity
+            FROM product_variations pv
+            LEFT JOIN stock s ON s.variation_id = pv.id
+            WHERE pv.product_id = ?");
+        $stmt->execute([$productId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function saveVariations($productId, $variations) {
+        // Remover antigas
+        $stmt = $this->db->prepare("DELETE FROM product_variations WHERE product_id = ?");
+        $stmt->execute([$productId]);
+
+        foreach ($variations as $v) {
+            $stmt = $this->db->prepare("INSERT INTO product_variations (product_id, variation_name, variation_value) VALUES (?, ?, ?)");
+            $stmt->execute([$productId, $v['name'], $v['value']]);
+            $variationId = $this->db->lastInsertId();
+
+            $stockStmt = $this->db->prepare("INSERT INTO stock (product_id, variation_id, quantity) VALUES (?, ?, ?)");
+            $stockStmt->execute([$productId, $variationId, $v['quantity']]);
+        }
+    }
+    
     }
 }
